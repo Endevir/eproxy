@@ -43,7 +43,6 @@ for location, rule in pairs(rules) do
     if location_type == nil then
         location_type = rules["!default"].loc_type
     end
-    ngx.log(ngx.ERR, location, "   ", locations_type_mapping[location_type])
     rules_locations:set(location, location, locations_type_mapping[location_type])
 end
 
@@ -220,6 +219,8 @@ function _A.process_antiddos_filter()
     end
 
     local user_id = gen_user_id(salt)
+    send_403_if_banned(user_id)
+
     -- processing rate limiting rules
     local rule, err = rules_locations:lookup(ngx.var.uri)
     if rule then
@@ -230,6 +231,8 @@ function _A.process_antiddos_filter()
         end
         ngx.log(ngx.WARN, "No antiddos rule matched for uri " .. ngx.var.uri)
     end
+
+    -- checking again if banned after rate limiting rules check
     send_403_if_banned(user_id)
 end
 
