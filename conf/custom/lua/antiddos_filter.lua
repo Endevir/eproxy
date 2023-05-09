@@ -152,16 +152,7 @@ local function process_request_against_antiddos_rule(user_id, rule_name)
     -- ngx.log(ngx.ERR, rule_name, " ", limit, " ", period, " ", bantime)
 
     -- Проверяем, что клиент уже забанен (т.е. его ключ находится в бан-листе)
-    local banned_time, _ = antiddos_filter_ban_list:get(user_id)
-    if banned_time ~= nil then 
-        -- Если товарищ оказался в бане - отдаем ему 403 и прощаемся
-        -- ngx.log(ngx.STDERR, uri_path, ', user IS BANNED!') 
-        ngx.header.content_type = "text/plain; charset=UTF-8"
-        ngx.status = 403
-        ngx.say("Слишком много запросов с вашего IP-адреса, не торопитесь!!!\nДоступ будет восстановлен в течение " .. banned_time .. " секунд.")
-        return ngx.exit(403)
-    end
-
+    
     -- ngx.log(ngx.STDERR, uri_path, ', requests count = ', requests_count, ' user key = ', key, ', ban_key = ', ban_key) 
 
     -- Пытаемся инкрементить счётчик запросов
@@ -181,14 +172,21 @@ local function process_request_against_antiddos_rule(user_id, rule_name)
     end
 
     antiddos_filter_ban_list:add(user_id, bantime, bantime) -- Закидываем пользователя в бан-лист, если он ещё не забанен
-    antiddos_filter_ban_list:add(ngx.var.remote_addr, bantime, bantime) -- Закидываем IP-адрес пользователя также в бан-лист, чтобы пользователь не мог сбросить куку и переполучить новую
+    antiddos_filter_ban_list:add(ngx.var.remote_addr, bantime, bantime) -- Закидываем IP-адрес пользователя также в бан-лист, чтобы пользователь не мог сбросить куку и бесплатно переполучить новую
     antiddos_filter_rules_counters:set(request_counter_key, 1, 60) -- "Обнуляем" счетчик запросов
- 
-    ngx.header.content_type = "text/plain; charset=UTF-8"
-    ngx.status = 403
-    ngx.say("Слишком много запросов с вашего IP-адреса, не торопитесь!!!\nДоступ будет восстановлен через " .. bantime .. " секунд")
     ngx.log(ngx.STDERR, 'BANNED USER with IP '..ngx.var.remote_addr..', user key: ',key, '\n') 
-    return ngx.exit(403)
+end
+
+local function send_403_if_banned(user_id)
+    local banned_time, _ = antiddos_filter_ban_list:get(user_id)
+    if banned_time ~= nil then 
+        -- Если товарищ оказался в бане - отдаем ему 403 и прощаемся
+        -- ngx.log(ngx.STDERR, uri_path, ', user IS BANNED!') 
+        ngx.header.content_type = "text/plain; charset=UTF-8"
+        ngx.status = 403
+        ngx.say("Слишком много запросов с вашего IP-адреса, не торопитесь!!!\nДоступ будет восстановлен в течение " .. banned_time .. " секунд.")
+        return ngx.exit(403)
+    end
 end
 
 local _A = {}
@@ -212,6 +210,7 @@ function _A.process_antiddos_filter()
     -- ngx.log(ngx.ERR, cookie_correct, "   ", salt)
 
     if cookie_correct == false or salt == nil then
+        send_403_if_banned(ngx.var.remote_addr)
         local salt = gen_random_salt()
         local user_id = gen_user_id(salt)
         local cookie_value = gen_cookie_value(user_id, salt) 
@@ -220,18 +219,18 @@ function _A.process_antiddos_filter()
         return
     end
 
+    local user_id = gen_user_id(salt)
     -- processing rate limiting rules
     local rule, err = rules_locations:lookup(ngx.var.uri)
     if rule then
-        -- do something based on val
-        -- ngx.log(ngx.ERR, "Matched " .. rule)
-        process_request_against_antiddos_rule(gen_user_id(salt), rule)
+        process_request_against_antiddos_rule(user_id, rule)
     else
         if err then
             ngx.log(ngx.ERR, err)
         end
         ngx.log(ngx.WARN, "No antiddos rule matched for uri " .. ngx.var.uri)
     end
+    send_403_if_banned(user_id)
 end
 
 return _A
