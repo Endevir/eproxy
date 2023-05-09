@@ -32,7 +32,10 @@ function _M.log_request()
     metric_bytes_received:inc(tonumber(ngx.var.request_length), {ngx.var.http_host})
     metric_bytes_sent:inc(tonumber(ngx.var.bytes_sent), {ngx.var.http_host})
     metric_requests:inc(1, {ngx.var.http_host, ngx.var.status})
-    -- metric_latency:
+    metric_latency:observe(tonumber(ngx.var.request_time) * 1000, {ngx.var.http_host})
+    if ngx.var.upstream_response_time ~= nil then
+        metric_backend_latency:observe(tonumber(ngx.var.upstream_response_time) * 1000, {ngx.var.http_host})
+    end
 end
 
 return _M
