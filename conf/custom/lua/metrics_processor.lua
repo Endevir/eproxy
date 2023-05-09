@@ -16,7 +16,9 @@ function _M.setup_metrics()
     metric_backend_latency = prometheus:histogram(
     "eproxy_http_proxy_response_time_ms", "HTTP upstream response latency", {"upstream"}, {100,200,500,1000,2000,3000,5000,8000,10000,30000,60000})
     metric_bans = prometheus:counter(
-    "eproxy_bans_total", "Number of bans", {"host", "rule"})
+    "eproxy_bans_total", "Number of bans", {"host"})
+    metric_bans_by_rule = prometheus:counter(
+    "eproxy_bans_by_rule", "Number of bans by rule", {"host", "rule"})
 
     metric_requests_by_country = prometheus:counter(
     "eproxy_http_req_total_by_country", "Number of HTTP requests by country", {"host", "status", "country"})
