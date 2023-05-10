@@ -1,13 +1,13 @@
--- Global config
+-- Global config && cacheable variables
 local default_rules = {
     ["!no-cookie"] = {
-        loc_type = "prefix",
+        loc_type = "exact",
         limit = 60,
         period = 60,
         bantime = 60
     },
     ["!default"] = {
-        loc_type = "prefix",
+        loc_type = "exact",
         limit = 60,
         period = 60,
         bantime = 60
@@ -47,7 +47,6 @@ for location, rule in pairs(rules) do
 end
 
 local cookie_lib = require("cookie_manager")
-local cookie, err = cookie_lib:new()
 
 -- Глобальные словари бан-листа и счетчиков запросов с shared-памятью
 local antiddos_filter_ban_list = ngx.shared['antiddos_filter_ban_list']
@@ -90,6 +89,7 @@ end
 
 local function set_cookie(cookie_value)
     -- TODO: Error handling like in example here https://github.com/cloudflare/lua-resty-cookie/
+    local cookie, err = cookie_lib:new()
     cookie:set({
         key = lua_req_cookie_name,
         value = cookie_value,
@@ -101,7 +101,8 @@ local function set_cookie(cookie_value)
     })
 end
 
-local function get_user_cookie() 
+local function get_user_cookie()
+    local cookie, err = cookie_lib:new()
     local user_cookie, err = cookie:get(lua_req_cookie_name)
     return user_cookie
 end
@@ -171,9 +172,11 @@ local function process_request_against_antiddos_rule(user_id, rule_name)
     end
 
     antiddos_filter_ban_list:add(user_id, bantime, bantime) -- Закидываем пользователя в бан-лист, если он ещё не забанен
-    antiddos_filter_ban_list:add(ngx.var.remote_addr, bantime, bantime) -- Закидываем IP-адрес пользователя также в бан-лист, чтобы пользователь не мог сбросить куку и бесплатно переполучить новую
+    if user_id ~= ngx.var.remote_addr then
+        antiddos_filter_ban_list:add(ngx.var.remote_addr, bantime, bantime) -- Закидываем IP-адрес пользователя также в бан-лист, чтобы пользователь не мог сбросить куку и бесплатно переполучить новую
+    end
     antiddos_filter_rules_counters:set(request_counter_key, 1, 60) -- "Обнуляем" счетчик запросов
-    ngx.log(ngx.STDERR, 'BANNED USER with IP '..ngx.var.remote_addr..', user key: ',key, '\n') 
+    ngx.log(ngx.STDERR, 'BANNED USER with IP '..ngx.var.remote_addr..', user key: ', key, ', rule name: ',  rule_name, '\n') 
 end
 
 local function send_403_if_banned(user_id)
@@ -209,6 +212,7 @@ function _A.process_antiddos_filter()
     -- ngx.log(ngx.ERR, cookie_correct, "   ", salt)
 
     if cookie_correct == false or salt == nil then
+        process_request_against_antiddos_rule(ngx.var.remote_addr, "!no-cookie")
         send_403_if_banned(ngx.var.remote_addr)
         local salt = gen_random_salt()
         local user_id = gen_user_id(salt)
@@ -234,6 +238,7 @@ function _A.process_antiddos_filter()
 
     -- checking again if banned after rate limiting rules check
     send_403_if_banned(user_id)
+    return
 end
 
 return _A

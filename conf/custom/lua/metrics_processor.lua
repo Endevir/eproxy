@@ -1,6 +1,6 @@
 local _M = {}
 
-function _M.setup_metrics()
+function _M.setup_metrics(self)
     -- This script will be run with directive "init_worker_by_lua_file" https://github.com/openresty/lua-nginx-module#init_worker_by_lua_block
     prometheus = require("prometheus").init("prometheus_metrics", {error_metric_name="eproxy_errors_total", sync_interval=3})
     metric_requests = prometheus:counter(
@@ -30,7 +30,7 @@ function _M.setup_metrics()
     "eproxy_http_backend_latency_by_path", "HTTP upstream responce latency by path", {"upstream", "path"})
 end
 
-function _M.log_request()
+function _M.log_request(self)
     metric_bytes_received:inc(tonumber(ngx.var.request_length), {ngx.var.http_host})
     metric_bytes_sent:inc(tonumber(ngx.var.bytes_sent), {ngx.var.http_host})
     metric_requests:inc(1, {ngx.var.http_host, ngx.var.status})
