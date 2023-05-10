@@ -36,6 +36,8 @@ local locations_type_mapping = {
 
 -- Preparing rules locations dictionary
 local locations = require("resty.locations") -- https://github.com/hamishforbes/lua-resty-locations
+local metrics = require("metrics_processor")
+
 local rules_locations = locations:new()
 
 for location, rule in pairs(rules) do
@@ -172,6 +174,8 @@ local function process_request_against_antiddos_rule(user_id, rule_name)
     end
 
     antiddos_filter_ban_list:add(user_id, bantime, bantime) -- Закидываем пользователя в бан-лист, если он ещё не забанен
+    metrics:log_ban(rule_name)
+
     if user_id ~= ngx.var.remote_addr then
         antiddos_filter_ban_list:add(ngx.var.remote_addr, bantime, bantime) -- Закидываем IP-адрес пользователя также в бан-лист, чтобы пользователь не мог сбросить куку и бесплатно переполучить новую
     end

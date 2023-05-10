@@ -40,4 +40,9 @@ function _M.log_request(self)
     end
 end
 
+function _M.log_ban(self, rule)
+    metric_bans:inc(1, {ngx.var.http_host})
+    metric_bans_by_rule:inc(1, {ngx.var.http_host, rule})
+end
+
 return _M
