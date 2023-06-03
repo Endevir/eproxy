@@ -24,10 +24,6 @@ function _M.setup_metrics(self)
     "eproxy_http_req_total_by_country", "Number of HTTP requests by country", {"host", "status", "country"})
     metric_requests_by_asn = prometheus:counter(
     "eproxy_http_req_total_by_asn", "Number of HTTP requests by ASN", {"host", "status", "asn"})
-    metric_requests_by_path = prometheus:counter(
-    "eproxy_http_req_total_by_path", "Number of HTTP requests by path", {"host", "path"})
-    metric_backend_latency_by_path = prometheus:gauge(
-    "eproxy_http_backend_latency_by_path", "HTTP upstream responce latency by path", {"upstream", "path"})
 end
 
 function _M.log_request(self)
@@ -43,6 +39,11 @@ end
 function _M.log_ban(self, rule)
     metric_bans:inc(1, {ngx.var.http_host})
     metric_bans_by_rule:inc(1, {ngx.var.http_host, rule})
+end
+
+function _M.log_geo(self, asn, country_iso_code)
+    metric_requests_by_country:inc(1, {ngx.var.http_host, ngx.var.status, country_iso_code})
+    metric_requests_by_asn:inc(1, {ngx.var.http_host, ngx.var.status, asn})
 end
 
 return _M
