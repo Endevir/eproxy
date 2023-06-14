@@ -12,16 +12,24 @@ local default_rules = {
         period = 60,
         bantime = 60
     },
-    ["/"] = {
-        loc_type = "exact",
-        limit = 45,
-        bantime = 60
-    }
 }
-local support_email = "arkhipov.ig@phystech.edu"
-local lua_req_cookie_name = "mipt_prx_sid"
-local lua_req_priv_key = "FUfuWec5BSbVdWujym00hl3_EXW9M2TTRbCTGuLTv3_KWLN672663zPEuCATo_zfXLVoMiM1YyVvY0jvSNPDrQ"
+
+local cjson = require "cjson"
+local config = require("ddos_config")
+
+local support_email = config.support_email or "webmaster@example.com"
+local lua_req_cookie_name = config.cookie_name or "prx_sid"
+local lua_req_priv_key = config.priv_key or "qVz6F2HL-7_5jId2IT1YA3D7eU1ahfwC-_j5Xzvap7LlK8NjHZ5o6NjpRR3wDjDHkQFkocw_7eNZNHR8qMufcg"
+
 local rules = default_rules
+for k,v in pairs(config.ddos_rules) do rules[k] = v end
+
+
+ngx.log(ngx.STDERR, 'Initializing anti-ddos\n',
+                    '\tsupport_email = ', support_email, '\n',
+                    '\tcookie_name = ', lua_req_cookie_name, '\n',
+                    '\tprivate_key = ', lua_req_priv_key, '\n',
+                    '\trules = ', cjson.encode(rules), '\n')
 
 --- Mapping between location type in config and nginx internal location type
 
